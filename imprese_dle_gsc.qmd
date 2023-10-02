@@ -1,0 +1,46 @@
+---
+title: "Imprese webu dle GSC"
+author: "Jan Polzer"
+format: html
+---
+
+## Počty zobrazení webů v SERPu dle Google Search Console
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(urltools)
+library(searchConsoleR)
+
+scr_auth()
+
+my_site <- searchConsoleR::list_websites() |>
+  filter(str_detect(siteUrl, 'domena')) |> 
+  pull('siteUrl')
+
+startDate <- format((Sys.Date() %m-% months(16)),"%Y-%m-%d")
+
+core_updates <- read.csv("https://raw.githubusercontent.com/maxiorel/SEO/main/google-core-updates.csv", sep = ";")
+core_updates <- subset(core_updates, date >= startDate)
+
+data <- search_analytics(
+  siteURL = my_site,
+  startDate = startDate,
+  endDate = today() - 3,
+  dimensions = "date"
+) 
+
+parsed_url <- urltools::url_parse(my_site)
+domain <- parsed_url$domain
+
+ggplot(data, aes(x = date, y = impressions)) + 
+xlab('Datum') +
+ylab('SERP imprese') +
+labs(title = paste("Imprese webu", domain, "od", format(min(data$date), "%d. %m. %Y")))+
+theme(plot.title = element_text(hjust = 0.5)) +
+scale_x_date(breaks = "3 months", date_labels = "%b %Y" ) +
+geom_vline(xintercept = as.Date(core_updates$date), linetype = "dashed", color = "lightcoral") +
+annotate("text", x=as.Date(core_updates$date)+4, y = max(data$impressions) + 10000, ymin=max(data$impressions)+10000, label=core_updates$name, angle=90, fontface = "bold", size=3, hjust=1 ) +
+geom_line() +
+geom_smooth()
+```
